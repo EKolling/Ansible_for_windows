@@ -5,5 +5,5 @@
   tasks:
     - name: Copiar arquivos para o host Windows
       win_copy:
-        src: /home/evandro/ANSIBLE_HELPER/arquivos/
+        src: /home/evandro/ANSIBLE/arquivos/
         dest: C:\helper\
