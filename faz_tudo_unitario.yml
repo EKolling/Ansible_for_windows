@@ -1,0 +1,87 @@
+- name: Playbook para host específico por IP
+  hosts: "{{ contrato }}"
+  gather_facts: false
+
+  vars:  #### sempre verificar antes de executar#################
+    Versao_atualizada: "2.6.2"
+    Cliente_Helper: "helper-totem Setup {{ Versao_atualizada }}.exe"
+    installation_directory: "C:\\Helper"
+    mongosh: "mongosh-2.0.1-x64.msi"
+    ip: "172.16.42.10"
+    ansible_winrm_operation_timeout_sec: 120
+    ansible_winrm_read_timeout_sec: 180
+
+  tasks:
+    - name: Verificar a versão do programa Helper-Totem instalado
+      win_shell: |
+        $ProgramPath = Join-Path -Path $env:LOCALAPPDATA -ChildPath "Programs\Helper-Totem\helper-totem.exe"
+        $installed_version = (Get-Command $ProgramPath).FileVersionInfo.FileVersion
+        $desired_version = $Versao_atualizada
+
+        if ($installed_version -ne $desired_version) {
+          Write-Output "A versão instalada é $installed_version. Iniciando a instalação da versão $desired_version."
+        } else {
+          Write-Output "A versão instalada é a mesma que a versão desejada. Nenhuma ação necessária."
+          exit 0  # Isso fará com que a execução do playbook continue normalmente, considerando isso como um sucesso
+          meta: end_play  # Isso encerrará o playbook assim que a versão for a mesma
+        }
+        
+      register: version_check
+
+    - name: Exibir a versão do programa Helper-Totem
+      debug:
+        var: version_check.stdout
+
+    - name: Copiar arquivos para o host Windows
+      win_copy:
+        src: /home/evandro/ANSIBLE_HELPER/arquivos/
+        dest: C:\helper\
+      when: version_check.rc == 0 and version_check.stdout.find("Nenhuma ação necessária") != -1  # Copiar apenas se a versão for diferente
+
+    - name: Verificar se o processo HelperMonitor.exe está em execução
+      win_shell: |
+        Get-Process -Name "HelperMonitor" -ErrorAction SilentlyContinue
+      register: process_check_result
+      ignore_errors: yes
+
+    - name: Encerrar o processo HelperMonitor.exe (se estiver em execução)
+      win_shell: Stop-Process -Name "HelperMonitor" -Force -ErrorAction SilentlyContinue
+      when: process_check_result.rc == 0  # Executar apenas se o processo estiver em execução
+      ignore_errors: yes
+
+    - name: Executar o instalador no Windows do MONGOSH
+      win_shell: |
+        Start-Process -Wait -FilePath "{{installation_directory}}\\{{mongosh}}"
+      environment:
+        PATH: "{{ansible_env.PATH}}"
+      vars:
+        ansible_shell_type: powershell
+
+    - name: Atualiza o IP do Zabbix com o MongoDB Shell
+      ansible.windows.win_shell: |
+        $ip = "{{ ip }}"
+        mongosh --quiet --eval "const db = connect('mongodb://localhost:27017/helper'); db.configs.updateOne({}, { `$set: { ipZabbix: '$ip'} });"
+      args:
+        executable: powershell
+
+    - name: Encerrar o processo Cliente Helper
+      win_shell: |
+        Stop-Process -Name "Helper-Totem" -Force -ErrorAction SilentlyContinue
+      ignore_errors: yes
+
+    - name: Executar o instalador da nova versao Cliente Helper
+      win_shell: |
+        Start-Process -Wait -FilePath "{{installation_directory}}\\{{ Cliente_Helper }}"
+
+# helper monitor contaminado#############
+    - name: Iniciar o processo helpermonitor.exe
+      win_shell: |
+        Start-Process -Wait -FilePath "C:\Helper\Helper Monitor\HelperMonitor.exe"
+      ignore_errors: yes
+      async: 300
+      poll: 0
+      register: process_start_result
+
+    - name: Finalizar com mensagem de sucesso se a versão for a mesma
+      win_command: echo "Versão instalada é a mesma que a versão desejada. Tarefa concluída com sucesso."
+      when: version_check.rc == 0 and version_check.stdout.find("Nenhuma ação necessária") != -1  

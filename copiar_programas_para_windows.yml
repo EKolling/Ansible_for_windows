@@ -1,0 +1,9 @@
+- name: Sincronizar pasta ARQUIVOS com os Nucs.
+  hosts: "{{ contrato }}"
+  gather_facts: false  # Desativamos a coleta de fatos para economizar tempo
+
+  tasks:
+    - name: Copiar arquivos para o host Windows
+      win_copy:
+        src: /home/evandro/ANSIBLE_HELPER/arquivos/
+        dest: C:\helper\
