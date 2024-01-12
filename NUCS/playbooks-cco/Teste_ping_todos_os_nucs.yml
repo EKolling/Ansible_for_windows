@@ -1,0 +1,11 @@
+---
+- name: Test Connectivity
+  hosts: all
+  tasks:
+    - name: Test SSH Connectivity
+      ping:
+      register: ping_result
+
+    - name: Display Results
+      debug:
+        var: ping_result

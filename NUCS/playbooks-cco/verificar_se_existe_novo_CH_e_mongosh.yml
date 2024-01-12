@@ -1,0 +1,19 @@
+---
+- name: Verificar a existência de arquivos no Windows
+  hosts: "{{ contrato }}"
+  tasks:
+    - name: Verificar o arquivo 'PROGRAMA-totem Setup *.exe'
+      win_find:
+        paths: "C:\\PROGRAMA"
+        patterns: "PROGRAMA-totem Setup *.exe"
+      register: resultado_PROGRAMA_totem
+
+
+    - name: Verificar o arquivo 'mongosh.msi'
+      win_stat:
+        path: "C:\\PROGRAMA\\mongosh.msi"
+      register: resultado_mongosh
+
+    - name: Exibir resultado da verificação
+      debug:
+        msg: "Arquivo 'PROGRAMA-totem Setup *.exe' existe: {{ resultado_PROGRAMA_totem.stat.exists }}, Arquivo 'mongosh.msi' existe: {{ resultado_mongosh.stat.exists }}"

@@ -1,0 +1,75 @@
+---
+- hosts: "{{ contrato }}"
+  gather_facts: false  # Desativamos a coleta de fatos para economizar tempo
+
+  vars:
+    installation_directory: 'C:\PROGRAMA'  # Defina o diretório de instalação aqui
+    ip: "8.8.8.8"  # Adicione o IP do Zabbix aqui
+    ansible_winrm_operation_timeout_sec: 120
+    ansible_winrm_read_timeout_sec: 180
+####
+#
+# atualiza o cliente PROGRAMA para o mais recente, baixado. (ver playbook de download programas)
+# atualiza o ip do zabbix no mongodb com o mongosh
+#
+####
+  tasks:
+    - name: Verificar se o processo PROGRAMAMonitor.exe está em execução
+      win_shell: |
+        Get-Process -Name "PROGRAMAMonitor" -ErrorAction SilentlyContinue
+      register: process_check_result
+      ignore_errors: yes 
+
+    - name: Encerrar o processo PROGRAMAMonitor.exe (se estiver em execução)
+      win_shell: |
+        Stop-Process -Name "PROGRAMAMonitor" -Force -ErrorAction SilentlyContinue
+      when: process_check_result.rc == 0  # Executar apenas se o processo estiver em execução
+      ignore_errors: yes
+
+    # - name: Executar o instalador no Windows do MONGOSH
+    #   win_shell: |
+    #     Start-Process -Wait -FilePath "{{installation_directory}}\\mongosh.msi"
+    #   environment:
+    #     PATH: "{{ansible_env.PATH}}"
+    #   vars:
+    #     ansible_shell_type: powershell
+
+    # - name: Atualiza o IP do Zabbix com o MongoDB Shell
+    #   ansible.windows.win_shell: |
+    #     $ip = "{{ ip }}" ; \
+    #     mongosh --quiet --eval "const db = connect('mongodb://localhost:27017/PROGRAMA'); db.configs.updateOne({}, { `$set: { ipZabbix: '$ip'} });"
+    #   args:
+    #     executable: powershell
+
+    - name: Encerrar o processo Cliente PROGRAMA
+      win_shell: |
+        Stop-Process -Name "PROGRAMA-Totem" -Force -ErrorAction SilentlyContinue
+      ignore_errors: yes
+
+    - name: Obter a versão mais recente do Cliente PROGRAMA
+      win_shell: |
+        $latestVersion = Get-ChildItem -Path "{{installation_directory}}" -Filter "PROGRAMA-totem Setup*.exe" | Sort-Object -Property LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty Name
+        $latestVersion
+      register: latest_version_result
+
+    - name: Imprimir a versão do arquivo Cliente PROGRAMA
+      debug:
+        var: latest_version_result.stdout
+
+
+    - name: Executar o instalador da versão mais recente do Cliente PROGRAMA
+      win_shell: |
+        $installerPath = "{{ installation_directory }}\{{ latest_version_result.stdout }}"
+        $installerPath = $installerPath -replace '\r\n', ''  # Remover quebras de linha
+        Start-Process -Wait -FilePath $installerPath
+      environment:
+        PATH: "{{ ansible_env.PATH }}"
+
+
+    - name: Iniciar o processo PROGRAMAmonitor.exe
+      win_shell: |
+        Start-Process -Wait -FilePath "C:\PROGRAMA\PROGRAMA Monitor\PROGRAMAMonitor.exe"
+      ignore_errors: yes
+      async: 300
+      poll: 0
+      register: process_start_result

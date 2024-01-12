@@ -1,0 +1,14 @@
+- name: Acessar a pasta e descobrir a versão do programa PROGRAMA-Totem
+  hosts: "{{ contrato }}"
+  gather_facts: yes  # coletar informações do sistema, pois não é necessário
+
+  tasks:
+    - name: Verificar a versão do programa PROGRAMA-Totem
+      win_shell: |
+        $ProgramPath = Join-Path -Path $env:LOCALAPPDATA -ChildPath "Programs\PROGRAMA-Totem\PROGRAMA-totem.exe"
+        (Get-Command $ProgramPath).FileVersionInfo.FileVersion
+      register: PROGRAMA_totem_version
+
+    - name: Exibir a versão do programa PROGRAMA-Totem
+      debug:
+        var: PROGRAMA_totem_version.stdout

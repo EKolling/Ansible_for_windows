@@ -1,0 +1,116 @@
+---
+- hosts: "{{ contrato }}"
+  gather_facts: false  # Desativamos a coleta de fatos para economizar tempo
+
+  vars:
+    installation_directory: 'C:\PROGRAMA'  # Defina o diretório de instalação aqui
+    ansible_winrm_operation_timeout_sec: 120
+    ansible_winrm_read_timeout_sec: 180
+
+  tasks:
+    - name: Verificar se o processo PROGRAMAMonitor.exe está em execução
+      win_shell: |
+        Get-Process -Name "PROGRAMAMonitor" -ErrorAction SilentlyContinue
+      register: process_check_result
+      ignore_errors: yes 
+
+    - name: Encerrar o processo PROGRAMAMonitor.exe (se estiver em execução)
+      win_shell: |
+        Stop-Process -Name "PROGRAMAMonitor" -Force -ErrorAction SilentlyContinue
+      when: process_check_result.rc == 0  # Executar apenas se o processo estiver em execução
+      ignore_errors: yes
+
+
+    - name: Encerrar processo PROGRAMA SIP
+      win_shell: |
+        Get-Process -Name "PROGRAMASIPClientGhost" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+      ignore_errors: yes
+
+
+    - name: Encerrar o processo Cliente PROGRAMA
+      win_shell: |
+        Stop-Process -Name "PROGRAMA-Totem" -Force -ErrorAction SilentlyContinue
+      ignore_errors: yes
+
+    - name: Obter a versão mais recente do Cliente PROGRAMA
+      win_shell: |
+        $latestVersion = Get-ChildItem -Path "{{installation_directory}}" -Filter "PROGRAMA-totem Setup*.exe" | Sort-Object -Property LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty Name
+        $latestVersion
+      register: latest_version_result
+
+    - name: Imprimir a versão do arquivo Cliente PROGRAMA
+      debug:
+        var: latest_version_result.stdout
+
+
+    - name: Executar o instalador da versão mais recente do Cliente PROGRAMA
+      win_shell: |
+        $installerPath = "{{ installation_directory }}\{{ latest_version_result.stdout }}"
+        $installerPath = $installerPath -replace '\r\n', ''  # Remover quebras de linha
+        Start-Process -Wait -FilePath $installerPath
+      environment:
+        PATH: "{{ ansible_env.PATH }}"
+
+    - name: Renomear o arquivo antigo PROGRAMASIPClientGhost.exe
+      win_shell: Move-Item -Path 'C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe' -Destination 'C:\PROGRAMA\SIP\PROGRAMASIPClientGhost-1003.exe'
+
+    - name: mover arquivo PROGRAMASIPClientGhost
+      win_shell: Move-Item -Path 'C:\PROGRAMA\PROGRAMASIPClientGhost.exe' -Destination 'C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe'
+
+    - name: Remover arquivo PROGRAMASIPClientGhost-1003.exe
+      win_file:
+        path: 'C:\PROGRAMA\SIP\PROGRAMASIPClientGhost-1003.exe'
+        state: absent
+
+    - name: Iniciar o processo PROGRAMA SIP
+      win_shell: |
+        Start-Process -Wait -FilePath "C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe"
+      ignore_errors: yes
+      async: 300
+      poll: 0
+      register: process_start_result
+
+    - name: Iniciar o processo PROGRAMAmonitor.exe
+      win_shell: |
+        Start-Process -Wait -FilePath "C:\PROGRAMA\PROGRAMA Monitor\PROGRAMAMonitor.exe"
+      ignore_errors: yes
+      async: 300
+      poll: 0
+      register: process_start_result
+
+    - name: Verificar a versão do programa PROGRAMA-Sip-Ghost
+      win_shell: |
+        $ProgramPath = "C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe"
+        if (Test-Path $ProgramPath) {
+          (Get-Command $ProgramPath).FileVersionInfo.FileVersion
+        } else {
+          Write-Host "O caminho do programa não foi encontrado."
+        }
+      register: PROGRAMAsipghost_version
+
+    - name: Exibir a versão do programa PROGRAMA-Sip-Ghost
+      debug:
+        var: PROGRAMAsipghost_version.stdout
+        
+    - name: Verificar a versão do programa PROGRAMA-Totem
+      win_shell: |
+        $ProgramPath = Join-Path -Path $env:LOCALAPPDATA -ChildPath "Programs\PROGRAMA-Totem\PROGRAMA-totem.exe"
+        (Get-Command $ProgramPath).FileVersionInfo.FileVersion
+      register: PROGRAMA_totem_version
+
+    - name: Exibir a versão do programa PROGRAMA-Totem
+      debug:
+        var: PROGRAMA_totem_version.stdout
+
+    - name: apresente os IPs com falha na conexão
+      win_shell: |
+        $ips = Get-Content -Path "C:\PROGRAMA\PROGRAMA Monitor\ips.txt"
+        $ips | ForEach-Object {
+          $ip = $_
+          $ping = Test-Connection -ComputerName $ip -Count 1 -Quiet
+          if ($ping -eq $false) {
+            Write-Host $ip
+          }
+        }
+      register: ips_offline
+    

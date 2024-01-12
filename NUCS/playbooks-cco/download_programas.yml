@@ -1,0 +1,57 @@
+---
+- name: Download automático de arquivo no Windows
+  hosts: "{{ contrato }}"
+
+  tasks:
+    - name: Baixar o arquivo Cliente PROGRAMA 2.7.0
+      win_get_url:
+        url: "URL_download_direto"
+        dest: "c:\\pasta\\PROGRAMA-totem Setup.exe"       
+
+    - name: Obter a versão atual do arquivo Cliente PROGRAMA
+      win_shell: |
+        (Get-Command "c:\\PROGRAMA\\PROGRAMA-totem Setup.exe").FileVersionInfo.FileVersion
+      register: PROGRAMA_version
+      ignore_errors: yes
+
+    - name: Imprimir a versão do arquivo Cliente PROGRAMA
+      debug:
+        var: PROGRAMA_version.stdout
+
+    - name: Renomear arquivo Cliente PROGRAMA com a versão
+      win_shell: |
+        $sourcePath = 'C:\PROGRAMA\PROGRAMA-totem Setup.exe'
+        $destinationPath = 'C:\PROGRAMA\PROGRAMA-totem Setup {{ PROGRAMA_version.stdout }}.exe'
+        
+        Move-Item -Path $sourcePath -Destination $destinationPath.Replace("`r`n", "") -Force
+      when: PROGRAMA_version.rc == 0
+
+
+##########################################################
+
+    - name: Baixar o arquivo SIP
+      win_get_url:
+        url: "URL_download_direto"
+        dest: "c:\\PROGRAMA\\PROGRAMASIPClientGhost.exe"
+
+    # - name: Baixar o arquivo SIP          
+    # - name: Obter a versão atual do arquivo SIP
+    #   win_shell: |
+    #     (Get-Command "c:\\PROGRAMA\\PROGRAMASIPClientGhost.exe").FileVersionInfo.FileVersion
+    #   register: sip_version
+
+    # - name: Imprimir a versão do arquivo SIP
+    #   debug:
+    #     var: sip_version.stdout
+
+    # - name: Renomear arquivo SIP com a versão
+    #   win_shell: |
+    #     Move-Item -Path 'C:\PROGRAMA\PROGRAMASIPClientGhost.exe' -Destination 'C:\PROGRAMA\PROGRAMASIPClientGhost-{{ sip_version.stdout | regex_replace('\r\n', '') }}.exe'
+    #   ignore_errors: yes
+            
+##########################################################
+
+    # - name: Baixar o arquivo MONGOSH
+    #   win_get_url:
+    #     url: "https://backup-dump-psql.s3.us-east-1.amazonaws.com/ANSIBLE-NUCS/mongosh-2.0.1-x64.msi?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEJb%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXNhLWVhc3QtMSJIMEYCIQDtPY4CPT%2BgqBEyQmFmTjEdSH%2BDWmxURdb%2F9Yxgp%2B7ekwIhAPgnFuK0AvVdrRf6JNmFZkRHhAnfdgA7KFaU8L5V%2FXd3KogDCO%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEQAxoMNTA0NTM0MDA0NjE0IgzgXHMcr7Niju9MQPUq3AKXgfdgmxKW8%2B9yWobg%2FVWC1I5Y%2B4gcQjQsZ1D4aXCIguUdA3AaFZLFj33QqfLZJOnXPi2EFqMIs12Vo6ujkWVNBvQs2O5q95ULsjX1utNvb%2FvQiHVhfTIC%2Blsj7uQ7cMAylPV7kH1FyqgEAjGVHzTZqfizMynE8AWR5xRWGhZ8AOLceT8RWFcfzHMomTX6eP5Eh0Aj6HxZd%2B3qDEzruNQHM42i2P3LvZMke5BB3wYSqw6BYuwiDDHW7wUBNZyrKW%2FnN%2FLCZsVG0X03R9dd%2B0lBgn4x%2BE%2BHt3jXkEje3DhVs6FZrSey3JLqwKx7equntPWn2qDJ5oG8BsmFF2PqEskIphQ9YAK1msQDRE8wXB4d7WGL%2B9%2Be0pfmo7v954NOfXa%2B28paotxbEieKPbQneDp3AqCcJxqht2%2FvKBerKabIruHMRbJBE08FQ8LLpqsQXqCVnvPfdL8LFftnFDwwnKKiqwY6sgKITgK8kk%2FLdsCNu7fsGxUAuEGSTnO0o91M0%2BIKgMn8AhuWthT%2FxFdJ7ZqQCvNjlp0C9uRYKLosx0Wv6%2FCIaxBjShjD%2B7KVXn3XrL7Sgt70M%2BrHxyRfrZwY1AFDEiD6p87q0XxV%2BaKoer6QTq6xm0JJy227TIGU2RwRVx7E9zXbOZGVwatHiKcfXphpT0nuvQeODbpVZb2nNx5uVDI41iDzRkpTfK%2BJa2F4Z1XtR6hYKLbgUwlQ1%2Fer%2F4AqjcllpmjpI5YEVCZc3ByL7uLXd9mMHlScHMqu%2Bdl5ojBoE1bu687rRw87p3EHcatl%2BJq1YeHGTbxnWtgcx%2FZKMfiJ8jQD%2BNLOkN16%2Bv32nWUTHkMkDsA7%2B59JiRIOMfe4EXDoV6fKRngnfVSGyER%2FV0gRi1lQqLs%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20231130T134815Z&X-Amz-SignedHeaders=host&X-Amz-Expires=3600&X-Amz-Credential=ASIAXK6ER6ODBOM3KR6J%2F20231130%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=e1b6af4d13dcb88b431b9724977fbeaeb8807efce780f5f92f0e1cdc73607628"
+    #      dest: "c:\\PROGRAMA\\mongosh.msi"

@@ -1,0 +1,52 @@
+- name: acrescentar novos parametros ao Zabbix Agent
+  hosts: "{{ contrato }}"
+  gather_facts: no  # Não coletar informações do sistema, pois não é necessário
+
+  tasks:
+    - name: Parar o serviço do Zabbix Agent
+      win_shell: |
+        $serviceName = "Zabbix Agent"
+        $serviceStatus = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+
+        if ($serviceStatus -ne $null) {
+            net stop $serviceName
+            $result = "Success"
+        } else {
+            $result = "Error: O serviço '$serviceName' não foi encontrado."
+        }
+
+        $result
+      register: parar_servico_zabbix_agent
+      ignore_errors: yes
+      async: 300
+      poll: 0
+
+    
+
+    - name: Editar o arquivo zabbix_agent2.conf
+      win_lineinfile:
+        path: C:\Zabbix\zabbix_agent2.conf
+        line: |
+
+         # Monitoramento Saúde de HD
+         Plugins.Smart.Path"=C:\Program Files\smartmontools\bin\smartctl.exe"
+        state: present
+      async: 300
+      poll: 0
+
+    - name: Iniciar o serviço do Zabbix Agent
+      win_shell: |
+        $serviceName = "Zabbix Agent"
+        $serviceStatus = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+
+        if ($serviceStatus -ne $null) {
+            net start $serviceName
+            $result = "Success"
+        } else {
+            $result = "Error: O serviço '$serviceName' não foi encontrado."
+        }
+
+        $result
+      register: iniciar_servico_zabbix_agent
+      async: 300
+      poll: 0

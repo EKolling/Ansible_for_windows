@@ -1,0 +1,54 @@
+- name: Reiniciar Equipamento
+  hosts: "{{ contrato }}"
+  gather_facts: no
+
+  tasks:
+    - name: Reiniciando equipamentos, com monitoramento de retorno PING.
+      win_shell: shutdown /r /t 0 /f
+      async: 0
+      poll: 0
+      register: reboot_result
+      vars:
+        reboot_time: "{{ ansible_date_time.iso8601 }}"
+
+    - name: Esperar 3 minutos antes de testar Win_Ping
+      pause:
+        seconds: 180  # Tempo de espera 
+      when: reboot_result.changed
+
+    - name: Test Win_Ping
+      win_ping:
+      register: ping_result
+      ignore_errors: yes
+      when: reboot_result.changed
+
+    - name: Informar sobre o resultado do Win_Ping
+      debug:
+        msg: "O equipamento Windows está online após o reinício bem-sucedido."
+      when: reboot_result.changed and ping_result.ping
+
+    - name: Informar que o reinício falhou ou o equipamento não está online
+      debug:
+        msg: "O reinício falhou ou o equipamento não está online."
+      when: reboot_result.changed and not ping_result.ping
+
+    - name: Verificar se os processos PROGRAMAMonitor.exe e PROGRAMA-Totem.exe estão em execução
+      win_shell: |
+        Get-Process -Name "PROGRAMAMonitor" -ErrorAction SilentlyContinue
+        Get-Process -Name "PROGRAMA-Totem" -ErrorAction SilentlyContinue
+      register: process_check_result
+      ignore_errors: yes
+    
+    - name: Criar lista de processos
+      set_fact:
+        processes:
+          - name: PROGRAMAMonitor
+            running: "{{ 'PROGRAMAMonitor' in process_check_result.stdout }}"
+          - name: PROGRAMA-totem
+            running: "{{ 'PROGRAMA-totem' in process_check_result.stdout }}"
+          # Adicione mais processos conforme necessário
+
+    - name: Exibir lista de processos
+      debug:
+        msg: "{{ processes }}"
+      when: process_check_result.stdout is defined

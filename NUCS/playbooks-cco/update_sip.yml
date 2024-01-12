@@ -1,0 +1,48 @@
+---
+- name: Download do SipGhost no Windows
+  hosts: "{{ contrato }}"
+
+  tasks:
+    - name: Copiar arquivo SipGhost
+      win_copy:
+        src: /home/evandro/ansible/CCO/NUCS/arquivos/PROGRAMASIPClientGhost.exe
+        dest: C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe
+        async: 300
+        poll: 0
+
+    - name: Encerrar processo PROGRAMA Monitor
+      win_shell: |
+        Get-Process -Name "PROGRAMAMonitor" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+      ignore_errors: yes
+
+    - name: Encerrar processo PROGRAMA SIP
+      win_shell: |
+        Get-Process -Name "PROGRAMASIPClientGhost" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+      ignore_errors: yes
+
+    # - name: Renomear o arquivo antigo PROGRAMASIPClientGhost.exe
+    #   win_shell: Move-Item -Path 'C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe' -Destination 'C:\PROGRAMA\SIP\PROGRAMASIPClientGhost-1003.exe'
+
+    # - name: mover arquivo PROGRAMASIPClientGhost
+    #   win_shell: Move-Item -Path 'C:\PROGRAMA\PROGRAMASIPClientGhost.exe' -Destination 'C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe'
+
+    # - name: Remover arquivo PROGRAMASIPClientGhost-1003.exe
+    #   win_file:
+    #     path: 'C:\PROGRAMA\SIP\PROGRAMASIPClientGhost-1003.exe'
+    #     state: absent
+
+    - name: Iniciar o processo PROGRAMA SIP E PROGRAMA Monitor
+      win_shell: |
+        Start-Process -Wait -FilePath "C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe"
+      ignore_errors: yes
+      async: 300
+      poll: 0
+      register: process_start_result
+
+    - name: Iniciar o processo PROGRAMAmonitor.exe
+      win_shell: |
+        Start-Process -Wait -FilePath "C:\PROGRAMA\PROGRAMA Monitor\PROGRAMAMonitor.exe"
+      ignore_errors: yes
+      async: 300
+      poll: 0
+      register: process_start_result

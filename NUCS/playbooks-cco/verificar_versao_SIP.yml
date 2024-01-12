@@ -1,0 +1,18 @@
+- name: Acessar a pasta e descobrir a versão do programa PROGRAMA-Sip-Ghost
+  hosts: "{{ contrato }}"
+  gather_facts: no
+
+  tasks:
+    - name: Verificar a versão do programa PROGRAMA-Sip-Ghost
+      win_shell: |
+        $ProgramPath = "C:\PROGRAMA\SIP\PROGRAMASIPClientGhost.exe"
+        if (Test-Path $ProgramPath) {
+          (Get-Command $ProgramPath).FileVersionInfo.FileVersion
+        } else {
+          Write-Host "O caminho do programa não foi encontrado."
+        }
+      register: PROGRAMAsipghost_version
+
+    - name: Exibir a versão do programa PROGRAMA-Sip-Ghost
+      debug:
+        var: PROGRAMAsipghost_version.stdout

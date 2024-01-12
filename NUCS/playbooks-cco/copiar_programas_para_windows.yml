@@ -1,0 +1,12 @@
+- name: Sincronizar pasta ARQUIVOS com Nucs.
+  hosts: "{{ contrato }}"  #usar em Bertioga
+  gather_facts: false  # Desabilitar coleta de fatos para economizar tempo
+  vars:
+    ansible_winrm_operation_timeout_sec: 120
+    ansible_winrm_read_timeout_sec: 180
+
+  tasks:
+    - name: Copiar arquivos para o Windows
+      win_copy:
+        src: /home/evandro/ansible/CCO/arquivos/
+        dest: C:\pasta\

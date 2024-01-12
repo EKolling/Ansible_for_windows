@@ -1,0 +1,25 @@
+---
+- name: Coletar informações do sistema em sistemas Windows
+  hosts: "{{ contrato }}"
+  gather_facts: yes  # Coletar informações do sistema
+
+  tasks:
+    - name: Obter tempo de atividade do sistema
+      ansible.windows.win_shell: |
+        $uptime = (Get-WmiObject -Class Win32_OperatingSystem).LastBootUpTime
+        $uptime = [System.Management.ManagementDateTimeConverter]::ToDateTime($uptime)
+        $uptime = (Get-Date) - $uptime
+        $uptime.TotalDays
+      register: uptime_output
+
+    - debug:
+        var: uptime_output.stdout
+
+    - name: Exibir informações de memória RAM livre (em MB)
+      debug:
+        var: ansible_memfree_mb
+      vars:
+        ansible_python_interpreter: /usr/bin/python  # Caminho para o interpretador Python no Linux
+      ignore_errors: yes  # Ignorar erros se a variável não estiver disponível
+
+
